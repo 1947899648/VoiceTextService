@@ -1,0 +1,25 @@
+# Setup sentinel
+.setup_done
+
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Audio test files
+*.wav
+*.m4a
+*.mp3
+
+# FFmpeg binaries (redistributed separately)
+ffmpeg/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
