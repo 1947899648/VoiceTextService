@@ -19,7 +19,7 @@ if exist ffmpeg\bin\ffmpeg.exe (
     echo [SKIP] FFmpeg already exists
 ) else (
     echo [0] Downloading FFmpeg (~80 MB) ...
-    powershell -Command "$ProgressPreference='SilentlyContinue'; $u='https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip'; $z='ffmpeg_temp.zip'; Invoke-WebRequest -Uri $u -OutFile $z -UseBasicParsing; Expand-Archive -Path $z -DestinationPath ffmpeg_temp -Force; $bin=Get-ChildItem ffmpeg_temp -Directory | Select-Object -First 1; New-Item -ItemType Directory -Path ffmpeg\bin -Force | Out-Null; Move-Item -Path \"$($bin.FullName)\bin\*\" -Destination ffmpeg\bin -Force; Remove-Item ffmpeg_temp -Recurse -Force; Remove-Item $z -Force; Write-Output 'FFmpeg installed'"
+    powershell -ExecutionPolicy Bypass -File scripts\download_ffmpeg.ps1
     if %errorlevel% neq 0 (
         echo [WARN] FFmpeg download failed. Only WAV format will be supported.
         echo        To add MP3/M4A support, re-run setup.bat or install FFmpeg manually.
