@@ -101,7 +101,7 @@ Or open / 或打开 `http://localhost:8000/docs` (Swagger UI).
 
 ```json
 {
-  "text": "你好我是王品哲",
+  "text": "你好我是王胖子",
   "duration": 9.3,
   "inference_time": 1.58
 }
