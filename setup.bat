@@ -83,9 +83,9 @@ echo [WARN] Paraformer model download failed. Will auto-download on first server
 echo.
 
 :: 8. CosyVoice model (TTS)
-echo [8/8] Downloading CosyVoice-300M-SFT model (~1.5 GB) ...
+echo [8/8] Downloading CosyVoice-300M-SFT model (~1.6 GB, essential files only) ...
 echo        This may take several minutes on first run.
-.venv\Scripts\python.exe -c "from modelscope import snapshot_download; snapshot_download('iic/CosyVoice-300M-SFT', local_dir='pretrained_models/CosyVoice-300M-SFT'); print('OK')"
+.venv\Scripts\python.exe -c "from modelscope import snapshot_download; snapshot_download('iic/CosyVoice-300M-SFT', local_dir='pretrained_models/CosyVoice-300M-SFT', ignore_file_pattern=[r'\.zip$', r'\.onnx$', r'\.msc$', r'\.mv$', r'^\._____temp', r'^asset/', r'^README\.md$']); print('OK')"
 if not errorlevel 1 goto TTS_MODEL_DONE
 echo [WARN] CosyVoice model download failed. Download manually to pretrained_models/CosyVoice-300M-SFT/
 :TTS_MODEL_DONE
