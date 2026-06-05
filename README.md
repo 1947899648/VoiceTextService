@@ -23,7 +23,6 @@ VoiceTextService/
 │   └── server.py              # FastAPI application / 主服务
 ├── scripts/
 │   ├── apply_patches.py       # Compatibility patcher / 兼容补丁（setup.bat 调用）
-│   ├── download_model.py      # Standalone model downloader / 模型预下载
 │   └── test_client.py         # CLI test utility / 命令行测试工具
 ├── ffmpeg/
 │   └── bin/                   # FFmpeg shared binaries (Windows)

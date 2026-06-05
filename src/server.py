@@ -1,13 +1,12 @@
 import os
+import subprocess
 import tempfile
 import time
 from contextlib import asynccontextmanager
 
-# Fix: soundfile 0.11+ removed SoundFileRuntimeError, breaking librosa fallback
 import soundfile as sf
 sf.SoundFileRuntimeError = RuntimeError
 
-import librosa
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import wenet
@@ -16,6 +15,15 @@ import wenet
 MODEL_NAME = os.getenv("WENET_MODEL", "paraformer")
 
 model = None
+
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _find_ffmpeg():
+    local = os.path.join(_PROJECT_ROOT, "ffmpeg", "bin", "ffmpeg.exe")
+    if os.path.exists(local):
+        return local
+    return "ffmpeg"
 
 
 @asynccontextmanager
@@ -57,16 +65,28 @@ async def asr(audio: UploadFile = File(...)):
     if len(data) == 0:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    fd, tmp_path = tempfile.mkstemp(suffix=suffix)
+    fd_src, src_path = tempfile.mkstemp(suffix=suffix)
+    fd_wav, wav_path = tempfile.mkstemp(suffix=".wav")
     try:
-        with open(fd, "wb") as f:
+        with open(fd_src, "wb") as f:
             f.write(data)
+        os.close(fd_wav)
+
+        subprocess.run([
+            _find_ffmpeg(), "-y", "-hide_banner", "-loglevel", "error",
+            "-i", src_path,
+            "-acodec", "pcm_s16le",
+            "-ac", "1",
+            "-ar", "16000",
+            wav_path
+        ], capture_output=True, check=True)
+
+        info = sf.info(wav_path)
+        audio_duration = round(info.duration, 2)
 
         start = time.time()
-        result = model.transcribe(tmp_path)
+        result = model.transcribe(wav_path)
         elapsed = time.time() - start
-
-        audio_duration = round(librosa.get_duration(path=tmp_path), 2)
 
         return {
             "text": result.text,
@@ -74,7 +94,8 @@ async def asr(audio: UploadFile = File(...)):
             "inference_time": round(elapsed, 2),
         }
     finally:
-        os.unlink(tmp_path)
+        os.unlink(src_path)
+        os.unlink(wav_path)
 
 
 if __name__ == "__main__":

@@ -2,14 +2,12 @@
 
 Fixes:
   1. conv2d.py     — split broken torch.nn.modules.conv imports
-  2. processor.py  — replace torchaudio audio loading with librosa
+  2. processor.py  — replace torchaudio audio loading with soundfile
   3. processor.py  — replace torchaudio resample with librosa
-  4. soundfile     — restore missing SoundFileRuntimeError for librosa fallback
+  4. soundfile     — restore missing SoundFileRuntimeError for librosa compatibility
 """
 
 import os
-import sys
-import importlib
 
 
 def find_wenet_root():
@@ -51,7 +49,7 @@ def patch_conv2d_imports(wenet_root):
 
 
 def patch_decode_wav(wenet_root):
-    """Fix: torchaudio.load() needs torchcodec+FFmpeg. Use librosa instead."""
+    """Fix: torchaudio.load() -> soundfile.read(). Server guarantees WAV input."""
     target = os.path.join(wenet_root, "dataset", "processor.py")
     if not os.path.exists(target):
         print(f"  SKIP processor.py (not found: {target})")
@@ -60,7 +58,45 @@ def patch_decode_wav(wenet_root):
     with open(target, "r", encoding="utf-8") as f:
         content = f.read()
 
-    old_func = '''def decode_wav(sample):
+    new_func = '''def decode_wav(sample):
+    """ Decode a wav file, convert bytes to waveform tensor.
+        Inplace operation. Uses soundfile (input guaranteed WAV by server).
+
+        Args:
+            sample: {key, wav, ...}
+
+        Returns:
+            {key, wav, sample_rate, ...}
+    """
+    import soundfile as sf
+    assert 'key' in sample
+    assert 'wav' in sample
+    wav_file = sample['wav']
+    if isinstance(wav_file, bytes):
+        wav_file = io.BytesIO(wav_file)
+    if isinstance(wav_file, io.BytesIO):
+        wav_file.seek(0)
+    if 'start' in sample:
+        assert 'end' in sample
+        info = sf.info(wav_file)
+        sample_rate = info.samplerate
+        start_frame = int(sample['start'] * sample_rate)
+        end_frame = int(sample['end'] * sample_rate)
+        waveform, _ = sf.read(wav_file, start=start_frame,
+                              stop=end_frame, dtype='float32')
+    else:
+        waveform, sample_rate = sf.read(wav_file, dtype='float32')
+    waveform = torch.from_numpy(waveform).unsqueeze(0)
+    del sample['wav']
+    sample['wav'] = waveform
+    sample['sample_rate'] = sample_rate
+    return sample'''
+
+    if new_func in content:
+        print("  OK  processor.py decode_wav (already patched)")
+        return False
+
+    old_torchaudio = '''def decode_wav(sample):
     """ Decode a wav file, convert bytes to waveform tensor.
         Inplace operation.
 
@@ -91,7 +127,7 @@ def patch_decode_wav(wenet_root):
     sample['sample_rate'] = sample_rate
     return sample'''
 
-    new_func = '''def decode_wav(sample):
+    old_librosa = '''def decode_wav(sample):
     """ Decode a wav file, convert bytes to waveform tensor.
         Inplace operation. Uses librosa + audioread for broad format support.
 
@@ -123,58 +159,17 @@ def patch_decode_wav(wenet_root):
     sample['sample_rate'] = sample_rate
     return sample'''
 
-    if new_func in content:
-        print("  OK  processor.py decode_wav (already patched)")
-        return False
-
-    if old_func not in content:
-        # Try the already-patched soundfile version
-        old_sf = '''def decode_wav(sample):
-    """ Decode a wav file, convert bytes to waveform tensor.
-        Inplace operation.
-
-        Args:
-            sample: {key, wav, ...}
-
-        Returns:
-            {key, wav, sample_rate, ...}
-    """
-    import soundfile as sf
-    assert 'key' in sample
-    assert 'wav' in sample
-    wav_file = sample['wav']
-    if isinstance(wav_file, bytes):
-        wav_file = io.BytesIO(wav_file)
-    if isinstance(wav_file, io.BytesIO):
-        wav_file.seek(0)
-    if 'start' in sample:
-        assert 'end' in sample
-        info = sf.info(wav_file)
-        sample_rate = info.samplerate
-        start_frame = int(sample['start'] * sample_rate)
-        end_frame = int(sample['end'] * sample_rate)
-        waveform, _ = sf.read(wav_file, start=start_frame,
-                              stop=end_frame, dtype='float32')
+    if old_torchaudio in content:
+        content = content.replace(old_torchaudio, new_func)
+    elif old_librosa in content:
+        content = content.replace(old_librosa, new_func)
     else:
-        waveform, sample_rate = sf.read(wav_file, dtype='float32')
-    waveform = torch.from_numpy(waveform).unsqueeze(0)
-    del sample['wav']
-    sample['wav'] = waveform
-    sample['sample_rate'] = sample_rate
-    return sample'''
-        if old_sf in content:
-            content = content.replace(old_sf, new_func)
-            with open(target, "w", encoding="utf-8") as f:
-                f.write(content)
-            print("  FIX processor.py decode_wav (soundfile -> librosa)")
-            return True
         print("  ??? processor.py decode_wav (original not found)")
         return False
 
-    content = content.replace(old_func, new_func)
     with open(target, "w", encoding="utf-8") as f:
         f.write(content)
-    print("  FIX processor.py decode_wav (torchaudio -> librosa)")
+    print("  FIX processor.py decode_wav (-> soundfile)")
     return True
 
 
@@ -215,7 +210,7 @@ def patch_resample(wenet_root):
 
 
 def patch_soundfile():
-    """Fix: soundfile 0.12+ removed SoundFileRuntimeError, librosa needs it."""
+    """Fix: soundfile 0.12+ removed SoundFileRuntimeError, needed by librosa.resample."""
     try:
         import soundfile as sf
         if hasattr(sf, 'SoundFileRuntimeError'):
@@ -235,7 +230,7 @@ def main():
     print("=" * 50)
     print()
 
-    # Must apply soundfile patch BEFORE importing librosa/wenet
+    # Must apply soundfile patch BEFORE importing wenet (which imports librosa for resample)
     patch_soundfile()
 
     wenet_root = find_wenet_root()
