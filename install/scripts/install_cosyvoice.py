@@ -18,9 +18,11 @@ import tempfile
 
 COSYVOICE_URL = "https://github.com/FunAudioLLM/CosyVoice.git"
 
+IS_WIN = sys.platform == "win32"
+
 # Packages to skip when installing from CosyVoice requirements.txt.
 #   - torch / torchaudio: already installed by WeNet (different version)
-#   - deepspeed / tensorrt: Linux-only GPU acceleration
+#   - deepspeed / tensorrt: Linux-only GPU acceleration (skipped on Windows)
 #   - gradio / grpcio: web demo / gRPC deployment, not needed for server
 #   - fastapi / uvicorn: already in project requirements.txt
 SKIP_PACKAGES = {
@@ -45,7 +47,7 @@ def _venv_site_packages():
     for p in sys.path:
         if p.endswith("site-packages") and ".venv" in p.replace("\\", "/"):
             return p
-    venv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".venv")
+    venv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".venv")
     for root, dirs, _ in os.walk(venv):
         if "site-packages" in dirs:
             return os.path.join(root, "site-packages")
@@ -61,7 +63,7 @@ def _parse_requirements(req_path):
     """Parse a pip requirements.txt, return list of (package_name, line).
 
     Filters out comments, blank lines, --extra-index-url flags, and
-    platform-conditional lines for non-Windows platforms.
+    platform-conditional lines that don't match the current OS.
     """
     deps = []
     with open(req_path, "r", encoding="utf-8") as f:
@@ -69,9 +71,12 @@ def _parse_requirements(req_path):
             line = raw.strip()
             if not line or line.startswith("#") or line.startswith("-"):
                 continue
-            # Skip Linux/macOS-only conditionals
-            if "; sys_platform ==" in line and "win32" not in line:
-                continue
+            # Skip lines with platform conditionals that don't match current OS
+            if "; sys_platform ==" in line:
+                if IS_WIN and "win32" not in line:
+                    continue
+                if not IS_WIN and "linux" not in line:
+                    continue
             # Extract package name (strip version specifiers and conditionals)
             pkg_name = re.split(r"[<>=!;]", line)[0].strip()
             deps.append((pkg_name, line))
@@ -88,7 +93,10 @@ def main():
     print(f"[INFO] site-packages: {site_pkg}")
 
     # Locate pip
-    pip_exe = os.path.join(os.path.dirname(site_pkg), "..", "Scripts", "pip.exe")
+    if IS_WIN:
+        pip_exe = os.path.join(os.path.dirname(site_pkg), "..", "Scripts", "pip.exe")
+    else:
+        pip_exe = os.path.join(os.path.dirname(site_pkg), "..", "bin", "pip3")
     if not os.path.exists(pip_exe):
         pip = [sys.executable, "-m", "pip"]
     else:

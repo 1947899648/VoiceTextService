@@ -366,7 +366,7 @@ def main():
 
     print()
     if changed:
-        print("  Patches applied. You can now run start.bat")
+        print("  Patches applied. You can now run run/start_win.bat or run/start_linux.sh")
     else:
         print("  All patches already applied. Ready to run.")
     print("=" * 50)

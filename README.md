@@ -26,44 +26,59 @@ ASR 基于 WeNet + Paraformer；TTS 基于阿里达摩院 CosyVoice。
 
 ```
 VoiceTextService/
+├── install/
+│   ├── setup_win.bat            # Windows setup entry / Windows 安装入口
+│   ├── setup_linux.sh           # Linux setup entry / Linux 安装入口
+│   └── scripts/
+│       ├── setup.py             # Cross-platform setup orchestrator / 跨平台安装调度器
+│       ├── apply_patches.py     # Compatibility patcher / 兼容补丁
+│       ├── install_cosyvoice.py # CosyVoice installer / CosyVoice 安装脚本
+│       └── download_ffmpeg.ps1  # FFmpeg auto-downloader (Win) / FFmpeg 自动下载
+├── run/
+│   ├── start_win.bat            # Windows launch / Windows 启动
+│   └── start_linux.sh           # Linux launch / Linux 启动
 ├── src/
-│   ├── server.py              # FastAPI application / 主服务 (/health, lifespan)
-│   ├── asr.py                 # ASR routes / 语音识别路由 (POST /asr)
-│   └── tts.py                 # TTS routes / 语音合成路由 (POST /tts, GET /tts/voices)
+│   └── core/
+│       ├── server.py            # FastAPI application / 主服务
+│       ├── asr.py               # ASR routes / 语音识别路由
+│       └── tts.py               # TTS routes / 语音合成路由
 ├── tests/
-│   ├── test_asr.py            # CLI test tool for ASR / 命令行测试工具
-│   └── test_tts.py            # CLI test tool for TTS / 命令行测试工具
-├── scripts/
-│   ├── apply_patches.py       # Compatibility patcher / 兼容补丁（WeNet + CosyVoice）
-│   ├── install_cosyvoice.py   # CosyVoice installer / CosyVoice 安装脚本
-│   └── download_ffmpeg.ps1    # FFmpeg auto-downloader / FFmpeg 自动下载
+│   ├── test_asr.py              # CLI test tool for ASR / 命令行测试工具
+│   └── test_tts.py              # CLI test tool for TTS / 命令行测试工具
 ├── ffmpeg/
-│   └── bin/                   # FFmpeg shared binaries (Windows)
-├── requirements.txt           # Pip dependencies / 依赖清单
+│   └── bin/                     # FFmpeg shared binaries (Windows)
+├── requirements.txt             # Pip dependencies / 依赖清单
 ├── .gitignore
-├── setup.bat                  # One-click first-time setup / 首次部署（双击）
-└── start.bat                  # Launch the server / 日常启动（双击）
+└── README.md
 ```
 
 Hidden at runtime / 运行时生成：
-- `.venv/` — Python virtual environment / 虚拟环境（`setup.bat` 创建，git 忽略）
+- `.venv/` — Python virtual environment / 虚拟环境（`setup` 创建，git 忽略）
 - `.setup_done` — Sentinel file / 哨兵文件（防止重复部署，git 忽略）
 - `pretrained_models/` — CosyVoice model cache / TTS 模型缓存（git 忽略）
 - `~/.wenet/paraformer/` — Paraformer model cache (~900 MB) / ASR 模型缓存
 
 ## Prerequisites / 前置条件
 
-- **Windows** (tested on 10/11) / Windows 10/11 已测试
+- **Windows 10/11** or **Linux** / Windows 10/11 或 Linux
 - **Python 3.10+** (in PATH) / Python 3.10+ 已加入 PATH
 - **Git** (in PATH) / Git 已加入 PATH
+- Linux only / 仅 Linux: **FFmpeg** (`sudo apt install ffmpeg`) recommended for broad audio format support
 - **NVIDIA GPU** (optional) / GPU 可选（无 GPU 自动降级 CPU）
 
 ## Quick Start / 快速开始
 
 ### First-time Setup / 首次部署
 
+**Windows:**
 ```
-双击 setup.bat
+双击 install\setup_win.bat
+```
+
+**Linux:**
+```bash
+chmod +x install/setup_linux.sh
+./install/setup_linux.sh
 ```
 
 This will / 将依次完成：  
@@ -71,17 +86,25 @@ This will / 将依次完成：
 2. Install pip dependencies / 安装 pip 依赖  
 3. Install WeNet (ASR) from GitHub / 从 GitHub 安装 WeNet  
 4. Install CosyVoice (TTS) to site-packages / 安装 CosyVoice 到 site-packages  
-5. Apply 5 compatibility patches / 应用 5 个兼容补丁  
+5. Apply compatibility patches / 应用兼容补丁  
 6. Download Paraformer model (~900 MB) / 下载 ASR 模型  
-7. Download CosyVoice-300M-SFT model (~1.5 GB) / 下载 TTS 模型
+7. Download CosyVoice-300M-SFT model (~1.6 GB) / 下载 TTS 模型  
+8. Download/verify FFmpeg / 下载/验证 FFmpeg
 
 Re-running is safe — skips everything if already complete (0 network).  
 重复运行安全 — 已部署则秒退，零网络流量。
 
 ### Launch / 启动
 
+**Windows:**
 ```
-双击 start.bat
+双击 run\start_win.bat
+```
+
+**Linux:**
+```bash
+chmod +x run/start_linux.sh
+./run/start_linux.sh
 ```
 
 Starts on `http://0.0.0.0:8000`.  
@@ -90,6 +113,10 @@ Starts on `http://0.0.0.0:8000`.
 ### Verify / 验证
 
 ```bash
+# Activate venv first / 先激活虚拟环境
+# Windows: .venv\Scripts\activate
+# Linux:   source .venv/bin/activate
+
 # ASR test
 python tests/test_asr.py sample.wav
 
@@ -172,9 +199,16 @@ WAV, MP3, M4A (AAC), FLAC, OGG — any format decodable by FFmpeg.
 | `COSYVOICE_MODEL_DIR` (env) | `pretrained_models/CosyVoice-300M-SFT` | Path to TTS model directory / TTS 模型目录 |
 
 Set via environment / 通过环境变量设置：
+
+**Windows:**
 ```bat
 set WENET_MODEL=whisper-large-v3
-start.bat
+run\start_win.bat
+```
+
+**Linux:**
+```bash
+WENET_MODEL=whisper-large-v3 ./run/start_linux.sh
 ```
 
 ## Performance / 性能
@@ -195,6 +229,7 @@ CosyVoice-300M-SFT 在 CPU 上约每秒推理生成 3-5 秒语音。
 
 GPU mode (10–50× speedup) / GPU 模式（10–50 倍加速）：
 ```bash
+# Run inside venv / 在虚拟环境内执行
 pip uninstall torch torchaudio -y
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
@@ -202,8 +237,8 @@ No code changes required. / 代码无需修改。
 
 ## Compatibility Patches / 兼容补丁
 
-This project applies 5 patches for Python 3.14 + PyTorch 2.12:  
-本项目打了 5 个补丁以兼容 Python 3.14 + PyTorch 2.12：
+This project applies patches for Python 3.14 + PyTorch 2.12:  
+本项目打了补丁以兼容 Python 3.14 + PyTorch 2.12：
 
 | # | Patch / 补丁 | Target / 目标 | Reason / 原因 |
 |---|---|---|---|
@@ -212,23 +247,27 @@ This project applies 5 patches for Python 3.14 + PyTorch 2.12:
 | 3 | Resample → librosa | WeNet `processor.py` `resample` | `torchaudio.transforms.Resample` removed |
 | 4 | SoundFileRuntimeError | `soundfile` (monkey-patch) | `soundfile` 0.12+ removed class |
 | 5 | torch.load weights_only | CosyVoice + Matcha | PyTorch 2.6+ defaults `weights_only=True`, breaks model checkpoints |
+| 6 | pyworld graceful fallback | CosyVoice `processor.py` | pyworld has no cp314 wheel on Windows |
 
-All patches are idempotent — `scripts/apply_patches.py` detects existing patches and skips.  
+All patches are idempotent — `apply_patches.py` detects existing patches and skips.  
 所有补丁均可重复执行 — `apply_patches.py` 自动检测已补状态并跳过。
 
 ## Deploying to Another Machine / 部署到其他电脑
 
 1. Copy entire project folder **except `.venv/`** / 拷贝整个项目文件夹，**不含 `.venv/`**
-2. Run `setup.bat` / 双击 `setup.bat`
-3. Run `start.bat` / 双击 `start.bat`
+2. **Windows:** 双击 `install\setup_win.bat`  
+   **Linux:** `./install/setup_linux.sh`
+3. **Windows:** 双击 `run\start_win.bat`  
+   **Linux:** `./run/start_linux.sh`
 
-Note: `ffmpeg/bin/` must be included in the copy.  
-注意：`ffmpeg/bin/` 目录必须随项目拷贝。
+Note: On Windows, `ffmpeg/bin/` must be included in the copy. On Linux, install via `apt install ffmpeg`.  
+注意：Windows 下 `ffmpeg/bin/` 必须随项目拷贝。Linux 下通过 `apt install ffmpeg` 安装。
 
 ## Roadmap / 路线图
 
 - [x] Offline ASR (WeNet + Paraformer) / 离线语音识别
 - [x] Offline TTS (CosyVoice SFT) / 离线语音合成
+- [x] Cross-platform support (Windows + Linux) / 跨平台支持
 - [ ] GPU mode with CUDA PyTorch / CUDA GPU 加速（代码零改动）
 - [ ] Streaming ASR (WebSocket) / 流式实时识别
 - [ ] Streaming TTS (WebSocket) / 流式实时合成

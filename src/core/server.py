@@ -23,7 +23,7 @@ import wenet
 
 ASR_MODEL_NAME = os.getenv("WENET_MODEL", "paraformer")
 TTS_MODEL_DIR = os.getenv("COSYVOICE_MODEL_DIR", os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..",
+    os.path.dirname(os.path.abspath(__file__)), "..", "..",
     "pretrained_models", "CosyVoice-300M-SFT",
 ))
 

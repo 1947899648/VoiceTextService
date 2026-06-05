@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -11,8 +12,9 @@ router = APIRouter(prefix="/asr")
 
 def _find_ffmpeg():
     project_root = os.path.dirname(
-        os.path.dirname(os.path.abspath(__file__)))
-    local = os.path.join(project_root, "ffmpeg", "bin", "ffmpeg.exe")
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+    local = os.path.join(project_root, "ffmpeg", "bin", ffmpeg_name)
     if os.path.exists(local):
         return local
     return "ffmpeg"
