@@ -16,6 +16,9 @@ __pycache__/
 # FFmpeg binaries (redistributed separately)
 ffmpeg/
 
+# Model cache directories
+pretrained_models/
+
 # IDE
 .vscode/
 .idea/

@@ -49,7 +49,7 @@ async def asr(request: Request, audio: UploadFile = File(...)):
         audio_duration = round(info.duration, 2)
 
         start = time.time()
-        result = request.app.state.model.transcribe(wav_path)
+        result = request.app.state.asr_model.transcribe(wav_path)
         elapsed = time.time() - start
 
         return {

@@ -21,7 +21,7 @@ echo [SKIP] FFmpeg already exists
 echo.
 
 :: 1. Python
-echo [1/6] Checking Python ...
+echo [1/8] Checking Python ...
 python --version >nul 2>&1
 if errorlevel 1 goto ERR_PYTHON
 echo [OK] Python found
@@ -29,7 +29,7 @@ echo.
 
 :: 2. Virtual environment
 if exist .venv\ goto VENV_SKIP
-echo [2/6] Creating virtual environment .venv ...
+echo [2/8] Creating virtual environment .venv ...
 python -m venv .venv
 if errorlevel 1 goto ERR_VENV
 echo [OK] .venv created
@@ -40,7 +40,7 @@ echo [SKIP] .venv already exists
 echo.
 
 :: 3. Pip dependencies
-echo [3/6] Installing pip dependencies ...
+echo [3/8] Installing pip dependencies ...
 .venv\Scripts\pip.exe install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 if not errorlevel 1 goto PIP_DONE
 echo [WARN] Mirror failed, trying default PyPI ...
@@ -49,31 +49,46 @@ if errorlevel 1 goto ERR_PIP
 :PIP_DONE
 echo.
 
-:: 4. Wenet
+:: 4. WeNet (ASR engine)
 .venv\Scripts\pip.exe show wenet >nul 2>&1
 if not errorlevel 1 goto WENET_SKIP
-echo [4/6] Installing wenet from GitHub ...
+echo [4/8] Installing wenet from GitHub ...
 .venv\Scripts\pip.exe install git+https://github.com/wenet-e2e/wenet.git
 if errorlevel 1 goto ERR_WENET
 goto WENET_DONE
 :WENET_SKIP
-echo [4/6] wenet already installed - SKIP
+echo [4/8] wenet already installed - SKIP
 :WENET_DONE
 echo.
 
-:: 5. Patches
-echo [5/6] Applying compatibility patches ...
+:: 5. CosyVoice (TTS engine)
+echo [5/8] Installing CosyVoice TTS ...
+.venv\Scripts\python.exe scripts\install_cosyvoice.py
+if errorlevel 1 goto ERR_COSYVOICE
+echo.
+
+:: 6. Patches (WeNet + CosyVoice)
+echo [6/8] Applying compatibility patches ...
 .venv\Scripts\python.exe scripts\apply_patches.py
 if errorlevel 1 goto ERR_PATCH
 echo.
 
-:: 6. Model
-echo [6/6] Downloading Paraformer model (~900 MB) ...
+:: 7. Paraformer model (ASR)
+echo [7/8] Downloading Paraformer model (~900 MB) ...
 echo        This may take several minutes on first run.
 .venv\Scripts\python.exe -c "from wenet.cli.hub import Hub; print(Hub.download_model('paraformer'))"
-if not errorlevel 1 goto MODEL_DONE
-echo [WARN] Model download failed. Will auto-download on first server start.
-:MODEL_DONE
+if not errorlevel 1 goto ASR_MODEL_DONE
+echo [WARN] Paraformer model download failed. Will auto-download on first server start.
+:ASR_MODEL_DONE
+echo.
+
+:: 8. CosyVoice model (TTS)
+echo [8/8] Downloading CosyVoice-300M-SFT model (~1.5 GB) ...
+echo        This may take several minutes on first run.
+.venv\Scripts\python.exe -c "from modelscope import snapshot_download; snapshot_download('iic/CosyVoice-300M-SFT', local_dir='pretrained_models/CosyVoice-300M-SFT'); print('OK')"
+if not errorlevel 1 goto TTS_MODEL_DONE
+echo [WARN] CosyVoice model download failed. Download manually to pretrained_models/CosyVoice-300M-SFT/
+:TTS_MODEL_DONE
 echo.
 
 :: Done
@@ -83,8 +98,10 @@ echo   Setup complete!
 echo.
 echo   Double-click start.bat to run the server.
 echo.
-echo   API:    POST http://localhost:8000/asr
-echo   Docs:   http://localhost:8000/docs
+echo   ASR:  POST http://localhost:8000/asr
+echo   TTS:  POST http://localhost:8000/tts
+echo         GET  http://localhost:8000/tts/voices
+echo   Docs: http://localhost:8000/docs
 echo ========================================
 pause
 exit /b 0
@@ -113,6 +130,11 @@ exit /b 1
 
 :ERR_WENET
 echo [ERROR] Failed to install wenet. Check network and git.
+pause
+exit /b 1
+
+:ERR_COSYVOICE
+echo [ERROR] Failed to install CosyVoice TTS. Check network and git.
 pause
 exit /b 1
 
