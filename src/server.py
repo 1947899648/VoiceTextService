@@ -1,6 +1,13 @@
 import os
 import time
+import warnings
 from contextlib import asynccontextmanager
+
+# CosyVoice uses LoRACompatibleLinear from diffusers which triggers a
+# FutureWarning unconditionally — suppress it.
+warnings.filterwarnings("ignore", message=".*LoRACompatibleLinear.*")
+# PyTorch 2.12 deprecated torch.cuda.amp.autocast (CosyVoice still uses it)
+warnings.filterwarnings("ignore", message=".*torch.cuda.amp.autocast.*")
 
 import soundfile as sf
 sf.SoundFileRuntimeError = RuntimeError

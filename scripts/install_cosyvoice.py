@@ -84,27 +84,42 @@ def main():
     print("=" * 50)
     print()
 
-    # 1. Check if already installed
-    try:
-        import cosyvoice  # noqa: F401
-        import matcha    # noqa: F401
-        print("[SKIP] cosyvoice already installed in site-packages")
-        print()
-        return
-    except ImportError:
-        pass
-
     site_pkg = _venv_site_packages()
     print(f"[INFO] site-packages: {site_pkg}")
 
-    # 2. Locate pip
-    pip = os.path.join(os.path.dirname(site_pkg), "..", "Scripts", "pip.exe")
-    if not os.path.exists(pip):
+    # Locate pip
+    pip_exe = os.path.join(os.path.dirname(site_pkg), "..", "Scripts", "pip.exe")
+    if not os.path.exists(pip_exe):
         pip = [sys.executable, "-m", "pip"]
     else:
-        pip = [pip]
+        pip = [pip_exe]
 
-    # 3. Clone CosyVoice (with submodules) to temp dir
+    # Install peft early — silences a diffusers FutureWarning on startup
+    try:
+        import peft  # noqa: F401
+        print("[SKIP] peft already installed")
+    except ImportError:
+        print("[INFO] Installing peft ...")
+        _run(pip + ["install", "peft", "-i", "https://pypi.tuna.tsinghua.edu.cn/simple"])
+    print()
+
+    # Check if cosyvoice packages already installed
+    cosyvoice_installed = False
+    try:
+        import cosyvoice  # noqa: F401
+        import matcha    # noqa: F401
+        cosyvoice_installed = True
+        print("[SKIP] cosyvoice packages already in site-packages")
+        print()
+    except ImportError:
+        pass
+
+    if cosyvoice_installed:
+        print("=" * 50)
+        print()
+        return
+
+    # Clone + install CosyVoice
     tmpdir = tempfile.mkdtemp(prefix="cosyvoice_build_")
     print(f"[INFO] temp dir: {tmpdir}")
     print()
@@ -114,7 +129,6 @@ def main():
         _run(["git", "clone", "--recursive", "--depth", "1", COSYVOICE_URL, tmpdir])
         print()
 
-        # 4. Copy cosyvoice/ package
         print("[2/4] Copying cosyvoice/ to site-packages ...")
         cosyvoice_src = os.path.join(tmpdir, "cosyvoice")
         cosyvoice_dst = os.path.join(site_pkg, "cosyvoice")
@@ -123,7 +137,6 @@ def main():
         shutil.copytree(cosyvoice_src, cosyvoice_dst)
         print()
 
-        # 5. Copy matcha/ package
         print("[3/4] Copying matcha/ to site-packages ...")
         matcha_src = os.path.join(tmpdir, "third_party", "Matcha-TTS", "matcha")
         matcha_dst = os.path.join(site_pkg, "matcha")
@@ -137,12 +150,10 @@ def main():
         shutil.copytree(matcha_src, matcha_dst)
         print()
 
-        # 6. Install dependencies from official requirements.txt
         print("[4/4] Installing TTS pip dependencies (from official requirements.txt) ...")
         req_path = os.path.join(tmpdir, "requirements.txt")
         if not os.path.exists(req_path):
-            print("[WARN] requirements.txt not found in clone, falling back to manual list")
-            raise RuntimeError("requirements.txt missing")
+            raise RuntimeError("requirements.txt missing from clone")
 
         all_deps = _parse_requirements(req_path)
         skipped = []
