@@ -26,8 +26,8 @@ def test_asr(audio_path: str):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python test_client.py <audio.wav>")
-        print("       python test_client.py <audio.wav> --skip-health")
+        print("Usage: python tests/test_asr.py <audio.wav>")
+        print("       python tests/test_asr.py <audio.wav> --skip-health")
         sys.exit(1)
 
     audio_path = sys.argv[1]

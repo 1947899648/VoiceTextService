@@ -12,6 +12,7 @@ Powered by [WeNet](https://github.com/wenet-e2e/wenet) + Paraformer model.
 
 ```
 Client  --POST /asr-->  FastAPI :8000  --wenet-->  paraformer  -->  {"text": "..."}
+            GET /health
             multipart/form-data
 ```
 
@@ -20,10 +21,15 @@ Client  --POST /asr-->  FastAPI :8000  --wenet-->  paraformer  -->  {"text": "..
 ```
 VoiceTextService/
 ├── src/
-│   └── server.py              # FastAPI application / 主服务
+│   ├── server.py              # FastAPI application / 主服务（/health）
+│   ├── asr.py                 # ASR routes / 语音识别路由（POST /asr）
+│   └── tts.py                 # TTS routes / 语音合成路由（骨架）
+├── tests/
+│   ├── test_asr.py            # CLI test tool for ASR / 命令行测试工具
+│   └── test_tts.py            # CLI test tool for TTS / 命令行测试工具
 ├── scripts/
 │   ├── apply_patches.py       # Compatibility patcher / 兼容补丁（setup.bat 调用）
-│   └── test_client.py         # CLI test utility / 命令行测试工具
+│   └── download_ffmpeg.ps1    # FFmpeg auto-downloader / FFmpeg 自动下载
 ├── ffmpeg/
 │   └── bin/                   # FFmpeg shared binaries (Windows)
 ├── requirements.txt           # Pip dependencies / 依赖清单
@@ -74,7 +80,7 @@ Starts on `http://0.0.0.0:8000`.
 ### Verify / 验证
 
 ```bash
-python scripts/test_client.py sample.wav
+python tests/test_asr.py sample.wav
 ```
 
 Or open / 或打开 `http://localhost:8000/docs` (Swagger UI).
@@ -85,8 +91,8 @@ Or open / 或打开 `http://localhost:8000/docs` (Swagger UI).
 
 | | |
 |---|---|
-| Description / 说明 | Server health check / 健康检查 |
-| Response / 返回 | `{"status": "ok"}` |
+| Description / 说明 | Server & module health check / 服务器与模块健康检查 |
+| Response / 返回 | `{"status": "ok", "asr": true, "tts": false}` |
 
 ### `POST /asr`
 
@@ -153,7 +159,7 @@ This project applies 4 patches to WeNet for Python 3.14 + PyTorch 2.12:
 | # | Patch / 补丁 | File / 文件 | Reason / 原因 |
 |---|---|---|---|
 | 1 | Split broken imports | `conv2d.py` | PyTorch 2.12 removed `Union`/`_pair` from `torch.nn.modules.conv` |
-| 2 | Audio loading → librosa | `processor.py` `decode_wav` | `torchaudio.load` requires FFmpeg; `librosa` uses `audioread` |
+| 2 | Audio loading → soundfile | `processor.py` `decode_wav` | `torchaudio.load` removed; `soundfile` reads WAV pre-decoded by FFmpeg |
 | 3 | Resample → librosa | `processor.py` `resample` | `torchaudio.transforms.Resample` → `librosa.resample` |
 | 4 | SoundFileRuntimeError | `soundfile` (monkey-patch) | `soundfile` 0.12+ removed class; `librosa` fallback broke |
 
