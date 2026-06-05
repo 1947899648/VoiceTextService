@@ -6,8 +6,10 @@ installs all dependencies, applies patches, and downloads models.
 
 import os
 import shlex
+import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 
 def _project_root():
@@ -130,14 +132,35 @@ def main():
     # 7. Download Paraformer model (ASR)
     print("[7/9] Downloading Paraformer model (~900 MB) ...")
     print("       This may take several minutes on first run.")
-    paraformer_cmd = (
-        "from wenet.cli.hub import Hub; "
-        "print(Hub.download_model('paraformer'))"
-    )
-    if _run_ok([venv_python, "-c", paraformer_cmd], root):
-        print("  [OK] Paraformer model ready")
+    paraformer_dir = os.path.join(root, "pretrained_models", "paraformer")
+    paraformer_final = os.path.join(paraformer_dir, "final.pt")
+    paraformer_tar = os.path.join(paraformer_dir, "paraformer.tar.gz")
+
+    if os.path.exists(paraformer_final) and os.path.exists(paraformer_tar):
+        print("  [SKIP] Paraformer model already in pretrained_models/")
     else:
-        print("  [WARN] Paraformer model download failed. Will auto-download on first server start.")
+        # Step A: Let Hub download to ~/.wenet/paraformer/ (skips if already cached)
+        hub_cmd = (
+            "from wenet.cli.hub import Hub; "
+            "print(Hub.download_model('paraformer'))"
+        )
+        hub_ok = _run_ok([venv_python, "-c", hub_cmd], root)
+
+        # Step B: Copy from ~/.wenet/ to pretrained_models/
+        hub_dir = os.path.join(str(Path.home()), ".wenet", "paraformer")
+        if hub_ok and os.path.isdir(hub_dir):
+            os.makedirs(paraformer_dir, exist_ok=True)
+            for name in os.listdir(hub_dir):
+                src = os.path.join(hub_dir, name)
+                dst = os.path.join(paraformer_dir, name)
+                if os.path.isfile(src) and not os.path.exists(dst):
+                    shutil.copy2(src, dst)
+            if os.path.exists(paraformer_final) and os.path.exists(paraformer_tar):
+                print("  [OK] Paraformer model ready")
+            else:
+                print("  [WARN] Copy incomplete. Check pretrained_models/paraformer/")
+        else:
+            print("  [WARN] Paraformer model download failed. Will auto-download on first server start.")
     print()
 
     # 8. Download CosyVoice model (TTS)

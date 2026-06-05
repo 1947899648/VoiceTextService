@@ -55,8 +55,9 @@ VoiceTextService/
 Hidden at runtime / 运行时生成：
 - `.venv/` — Python virtual environment / 虚拟环境（`setup` 创建，git 忽略）
 - `.setup_done` — Sentinel file / 哨兵文件（防止重复部署，git 忽略）
-- `pretrained_models/` — CosyVoice model cache / TTS 模型缓存（git 忽略）
-- `~/.wenet/paraformer/` — Paraformer model cache (~900 MB) / ASR 模型缓存
+- `pretrained_models/` — Model cache / 模型缓存（git 忽略）
+  - `pretrained_models/paraformer/` — Paraformer model (~900 MB) / ASR 模型
+  - `pretrained_models/CosyVoice-300M-SFT/` — CosyVoice model (~1.6 GB) / TTS 模型
 
 ## Prerequisites / 前置条件
 
@@ -254,9 +255,13 @@ All patches are idempotent — `apply_patches.py` detects existing patches and s
 
 ## Deploying to Another Machine / 部署到其他电脑
 
-1. Copy entire project folder **except `.venv/`** / 拷贝整个项目文件夹，**不含 `.venv/`**
+1. Copy entire project folder **except `.venv/`** / 拷贝整个项目文件夹，**不含 `.venv/`**  
+   Include `pretrained_models/` and `ffmpeg/bin/` (Windows) to skip model downloads.  
+   建议带上 `pretrained_models/` 和 `ffmpeg/bin/`（Windows），避免重新下载模型。
 2. **Windows:** 双击 `install\setup_win.bat`  
-   **Linux:** `./install/setup_linux.sh`
+   **Linux:** `./install/setup_linux.sh`  
+   (Setup detects existing models in `pretrained_models/` and skips download.)  
+   （setup 自动检测 `pretrained_models/` 中已有模型并跳过下载。）
 3. **Windows:** 双击 `run\start_win.bat`  
    **Linux:** `./run/start_linux.sh`
 

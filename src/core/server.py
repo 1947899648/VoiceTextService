@@ -22,6 +22,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import wenet
 
 ASR_MODEL_NAME = os.getenv("WENET_MODEL", "paraformer")
+ASR_MODEL_DIR = os.getenv("ASR_MODEL_DIR", os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..",
+    "pretrained_models", "paraformer",
+))
 TTS_MODEL_DIR = os.getenv("COSYVOICE_MODEL_DIR", os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "..",
     "pretrained_models", "CosyVoice-300M-SFT",
@@ -30,9 +34,11 @@ TTS_MODEL_DIR = os.getenv("COSYVOICE_MODEL_DIR", os.path.join(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print(f"[INIT] Loading ASR model: {ASR_MODEL_NAME} ...")
+    asr_path = ASR_MODEL_DIR if os.path.exists(
+        os.path.join(ASR_MODEL_DIR, "final.pt")) else ASR_MODEL_NAME
+    print(f"[INIT] Loading ASR model: {asr_path} ...")
     start = time.time()
-    app.state.asr_model = wenet.load_model(ASR_MODEL_NAME)
+    app.state.asr_model = wenet.load_model(asr_path)
     elapsed = time.time() - start
     print(f"[INIT] ASR model loaded in {elapsed:.1f}s")
 
