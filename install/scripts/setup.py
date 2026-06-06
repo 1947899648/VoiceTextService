@@ -187,27 +187,20 @@ def main():
     print("[9/9] Checking FFmpeg ...")
     if is_win:
         ffmpeg_exe = os.path.join(root, "ffmpeg", "bin", "ffmpeg.exe")
-        if os.path.exists(ffmpeg_exe):
-            print("  [SKIP] FFmpeg already exists")
-        else:
-            print("  Downloading FFmpeg (~80 MB) ...")
-            ps1_script = os.path.join(
-                root, "install", "scripts", "download_ffmpeg.ps1")
-            result = subprocess.run(
-                ["powershell", "-ExecutionPolicy", "Bypass", "-File", ps1_script],
-                cwd=root)
-            if result.returncode == 0:
-                print("  [OK] FFmpeg installed")
-            else:
-                print("  [WARN] FFmpeg download failed. Only WAV format supported.")
     else:
-        # Linux: check if ffmpeg is on PATH
-        result = subprocess.run(["which", "ffmpeg"], capture_output=True, cwd=root)
+        ffmpeg_exe = os.path.join(root, "ffmpeg", "bin", "ffmpeg")
+    if os.path.exists(ffmpeg_exe):
+        print("  [SKIP] FFmpeg already exists in ffmpeg/bin/")
+    else:
+        print("  Downloading FFmpeg (~80 MB) ...")
+        ffmpeg_script = os.path.join(
+            root, "install", "scripts", "download_ffmpeg.py")
+        result = subprocess.run(
+            [sys.executable, ffmpeg_script], cwd=root)
         if result.returncode == 0:
-            print(f"  [OK] FFmpeg found: {result.stdout.decode().strip()}")
+            print("  [OK] FFmpeg installed to ffmpeg/bin/")
         else:
-            print("  [WARN] FFmpeg not found. Install via: sudo apt install ffmpeg")
-            print("         Only WAV format will be supported without FFmpeg.")
+            print("  [WARN] FFmpeg download failed. Only WAV format supported.")
     print()
 
     # Done

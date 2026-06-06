@@ -33,7 +33,7 @@ VoiceTextService/
 │       ├── setup.py             # Cross-platform setup orchestrator / 跨平台安装调度器
 │       ├── apply_patches.py     # Compatibility patcher / 兼容补丁
 │       ├── install_cosyvoice.py # CosyVoice installer / CosyVoice 安装脚本
-│       └── download_ffmpeg.ps1  # FFmpeg auto-downloader (Win) / FFmpeg 自动下载
+│       └── download_ffmpeg.py   # FFmpeg auto-downloader / FFmpeg 自动下载
 ├── run/
 │   ├── start_win.bat            # Windows launch / Windows 启动
 │   └── start_linux.sh           # Linux launch / Linux 启动
@@ -64,7 +64,7 @@ Hidden at runtime / 运行时生成：
 - **Windows 10/11** or **Linux** / Windows 10/11 或 Linux
 - **Python 3.10+** (in PATH) / Python 3.10+ 已加入 PATH
 - **Git** (in PATH) / Git 已加入 PATH
-- Linux only / 仅 Linux: **FFmpeg** (`sudo apt install ffmpeg`) recommended for broad audio format support
+- **FFmpeg** — auto-downloaded by setup (no manual install required) / 安装脚本自动下载，无需手动安装
 - **NVIDIA GPU** (optional) / GPU 可选（无 GPU 自动降级 CPU）
 
 ## Quick Start / 快速开始
@@ -90,7 +90,7 @@ This will / 将依次完成：
 5. Apply compatibility patches / 应用兼容补丁  
 6. Download Paraformer model (~900 MB) / 下载 ASR 模型  
 7. Download CosyVoice-300M-SFT model (~1.6 GB) / 下载 TTS 模型  
-8. Download/verify FFmpeg / 下载/验证 FFmpeg
+8. Download FFmpeg (auto) / 自动下载 FFmpeg
 
 Re-running is safe — skips everything if already complete (0 network).  
 重复运行安全 — 已部署则秒退，零网络流量。
@@ -256,17 +256,14 @@ All patches are idempotent — `apply_patches.py` detects existing patches and s
 ## Deploying to Another Machine / 部署到其他电脑
 
 1. Copy entire project folder **except `.venv/`** / 拷贝整个项目文件夹，**不含 `.venv/`**  
-   Include `pretrained_models/` and `ffmpeg/bin/` (Windows) to skip model downloads.  
-   建议带上 `pretrained_models/` 和 `ffmpeg/bin/`（Windows），避免重新下载模型。
+   Include `pretrained_models/` and `ffmpeg/bin/` to skip model/FFmpeg downloads.  
+   建议带上 `pretrained_models/` 和 `ffmpeg/bin/`，避免重新下载模型和 FFmpeg。
 2. **Windows:** 双击 `install\setup_win.bat`  
    **Linux:** `./install/setup_linux.sh`  
-   (Setup detects existing models in `pretrained_models/` and skips download.)  
-   （setup 自动检测 `pretrained_models/` 中已有模型并跳过下载。）
+   (Setup detects existing models in `pretrained_models/` and `ffmpeg/bin/`, skips download.)  
+   （setup 自动检测已有模型和 FFmpeg 并跳过下载。）
 3. **Windows:** 双击 `run\start_win.bat`  
    **Linux:** `./run/start_linux.sh`
-
-Note: On Windows, `ffmpeg/bin/` must be included in the copy. On Linux, install via `apt install ffmpeg`.  
-注意：Windows 下 `ffmpeg/bin/` 必须随项目拷贝。Linux 下通过 `apt install ffmpeg` 安装。
 
 ## Roadmap / 路线图
 
